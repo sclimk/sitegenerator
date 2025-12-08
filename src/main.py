@@ -35,7 +35,7 @@ def generate_page(from_path, template_path, dest_path, basepath):
     full_html = template_html.replace("{{ Title }}", title)
     full_html = full_html.replace("{{ Content }}", content_html)
 
-    # ? REQUIRED BY ASSIGNMENT
+    # REQUIRED BY ASSIGNMENT
     full_html = full_html.replace('href="/', f'href="{basepath}')
     full_html = full_html.replace('src="/', f'src="{basepath}')
 
@@ -46,20 +46,22 @@ def generate_page(from_path, template_path, dest_path, basepath):
 
     print(f"Wrote page to {dest_path}")
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
-    for root, dirs, files in os.walk(dir_path_content):
+def generate_pages_recursive(content_dir, template_path, docs_dir, basepath):
+    for root, dirs, files in os.walk(content_dir):
         for filename in files:
             if filename.endswith(".md"):
                 content_path = os.path.join(root, filename)
+                relative_path = os.path.relpath(content_path, content_dir)
+                parts = relative_path.split(os.sep)
 
-                relative = os.path.relpath(content_path, dir_path_content)
-                relative_no_ext = os.path.splitext(relative)[0]
-
-                # Put top-level index.md directly in the root of docs
-                if relative_no_ext == "index":
-                    dest_path = os.path.join(dest_dir_path, "index.html")
+                # Determine destination directory
+                if parts[-1] == "index.md":
+                    dest_dir = os.path.join(docs_dir, *parts[:-1])  # all but filename
+                    os.makedirs(dest_dir, exist_ok=True)
+                    dest_path = os.path.join(dest_dir, "index.html")
                 else:
-                    dest_dir = os.path.join(dest_dir_path, relative_no_ext)
+                    dest_dir = os.path.join(docs_dir, *parts)
+                    os.makedirs(dest_dir, exist_ok=True)
                     dest_path = os.path.join(dest_dir, "index.html")
 
                 generate_page(content_path, template_path, dest_path, basepath)
