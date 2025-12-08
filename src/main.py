@@ -55,8 +55,12 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, bas
                 relative = os.path.relpath(content_path, dir_path_content)
                 relative_no_ext = os.path.splitext(relative)[0]
 
-                dest_dir = os.path.join(dest_dir_path, relative_no_ext)
-                dest_path = os.path.join(dest_dir, "index.html")
+                # Put top-level index.md directly in the root of docs
+                if relative_no_ext == "index":
+                    dest_path = os.path.join(dest_dir_path, "index.html")
+                else:
+                    dest_dir = os.path.join(dest_dir_path, relative_no_ext)
+                    dest_path = os.path.join(dest_dir, "index.html")
 
                 generate_page(content_path, template_path, dest_path, basepath)
 
