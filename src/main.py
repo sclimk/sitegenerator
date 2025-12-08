@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import re
 from markdown_to_html import markdown_to_html_node
 from extract import extract_title
 
@@ -35,9 +36,16 @@ def generate_page(from_path, template_path, dest_path, basepath):
     full_html = template_html.replace("{{ Title }}", title)
     full_html = full_html.replace("{{ Content }}", content_html)
 
-    # REQUIRED BY ASSIGNMENT
+    # Replace root-based href/src with basepath
     full_html = full_html.replace('href="/', f'href="{basepath}')
     full_html = full_html.replace('src="/', f'src="{basepath}')
+
+    # Add trailing slash for folder links that don't already end with .html or /
+    full_html = re.sub(
+        r'href="([^"]+)(?<!/)(?<!\.html)"',
+        lambda m: f'{m.group(1)}/"',
+        full_html
+    )
 
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
@@ -46,27 +54,26 @@ def generate_page(from_path, template_path, dest_path, basepath):
 
     print(f"Wrote page to {dest_path}")
 
-def generate_pages_recursive(content_dir, template_path, docs_dir, basepath):
-    for root, dirs, files in os.walk(content_dir):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
+    for root, dirs, files in os.walk(dir_path_content):
         for filename in files:
             if filename.endswith(".md"):
                 content_path = os.path.join(root, filename)
-                relative_path = os.path.relpath(content_path, content_dir)
-                parts = relative_path.split(os.sep)
 
-                # Determine destination directory
-                if parts[-1] == "index.md":
-                    dest_dir = os.path.join(docs_dir, *parts[:-1])  # all but filename
-                    os.makedirs(dest_dir, exist_ok=True)
-                    dest_path = os.path.join(dest_dir, "index.html")
+                relative = os.path.relpath(content_path, dir_path_content)
+                relative_no_ext = os.path.splitext(relative)[0]
+
+                # Put top-level index.md directly in the root of docs
+                if relative_no_ext == "index":
+                    dest_path = os.path.join(dest_dir_path, "index.html")
                 else:
-                    dest_dir = os.path.join(docs_dir, *parts)
-                    os.makedirs(dest_dir, exist_ok=True)
+                    dest_dir = os.path.join(dest_dir_path, relative_no_ext)
                     dest_path = os.path.join(dest_dir, "index.html")
 
                 generate_page(content_path, template_path, dest_path, basepath)
 
 def main():
+    # Basepath for GitHub Pages, defaults to /
     basepath = sys.argv[1] if len(sys.argv) > 1 else "/"
 
     docs_dir = "docs"
@@ -74,11 +81,14 @@ def main():
     content_dir = "content"
     template_path = "template.html"
 
+    # Clear old docs directory
     if os.path.exists(docs_dir):
         shutil.rmtree(docs_dir)
 
+    # Copy static assets into docs
     shutil.copytree(static_dir, docs_dir)
 
+    # Generate pages from markdown
     generate_pages_recursive(
         content_dir,
         template_path,
